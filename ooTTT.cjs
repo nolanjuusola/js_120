@@ -1,24 +1,29 @@
-/* eslint-disable max-len */
 let readline = require('readline-sync');
 
 class Player {
   constructor(order) {
-    this.score = 0;
+    this.resetScore();
     this.order = order;
+    this.playerMarker = this.order === Player.PLAYER_ONE_ORDER ?
+      Player.PLAYER_ONE_MARKER : Player.PLAYER_TWO_ORDER;
   }
   static PLAYER_ONE_ORDER = 1;
   static PLAYER_TWO_ORDER = 2;
+  static PLAYER_HUMAN = 'human';
+  static PLAYER_COMPUTER = 'computer';
+  static COMPUTER_EASY = 'easy';
+  static COMPUTER_HARD = 'hard';
 
-  getPlayerDifficulty(player) {
-    if (player.type === 'computer') {
+  getPlayerDifficulty() {
+    if (this.type === 'computer') {
       let response;
       while (true) {
-        console.log(`Is ${player.name} on easy mode or hard mode (e, h)?`);
-        response = readline.question();
-        if (response[0].toLowerCase() === 'e' || response[0].toLowerCase() === 'h') break;
+        console.log(`Is ${this.name} on easy mode or hard mode (e, h)?`);
+        response = (readline.question()).toLowerCase();
+        if (response === 'e' || response === 'h') break;
         console.log("That's not a valid choice.");
       }
-      player.difficulty = response === 'e' ? 'easy' : 'hard';
+      this.difficulty = response === 'e' ? Player.COMPUTER_EASY : Player.COMPUTER_HARD;
     }
   }
 
@@ -31,11 +36,27 @@ class Player {
     let type;
     while (true) {
       console.log(`Is Player ${order} a human or a computer (h, c)?`);
-      type = readline.question()[0].toLowerCase();
+      type = (readline.question()).toLowerCase();
       if (type === 'h' || type === 'c') break;
       console.log("That's not a valid choice.");
     }
-    this.type = type === 'h' ? 'human' : 'computer';
+    this.type = type === 'h' ? Player.PLAYER_HUMAN : Player.PLAYER_COMPUTER;
+  }
+
+  returnName() {
+    return this.name;
+  }
+
+  returnScore() {
+    return this.score;
+  }
+
+  resetScore() {
+    this.score = 0;
+  }
+
+  incrementScore() {
+    this.score++;
   }
 }
 
@@ -47,6 +68,18 @@ class Square {
   static PLAYER_ONE_MARKER = 'X';
   static PLAYER_TWO_MARKER = 'O';
   static UNUSED_SQUARE = ' ';
+
+  isUnused() {
+    return this.marker === Square.UNUSED_SQUARE;
+  }
+
+  getMarker() {
+    return this.marker;
+  }
+
+  setMarker(marker) {
+    this.marker = marker;
+  }
 }
 
 class Board {
@@ -57,7 +90,7 @@ class Board {
   displayBoard() {
     console.log("");
     console.log("     |     |");
-    console.log(`  ${this.gameBoard[1].marker}  |  ${this.gameBoard["2"].marker}  |  ${this.gameBoard["3"].marker}`);
+    console.log(`  ${this.gameBoard[1].getMarker()}  |  ${this.gameBoard["2"].marker}  |  ${this.gameBoard["3"].marker}`);
     console.log("     |     |");
     console.log("-----+-----+-----");
     console.log("     |     |");
@@ -80,7 +113,7 @@ class Board {
   unusedSquares() {
     let unusedArray = [];
     for (let square in this.gameBoard) {
-      if (this.gameBoard[square].marker === Square.UNUSED_SQUARE) {
+      if (this.gameBoard[square].isUnused()) {
         unusedArray.push(square);
       }
     }
@@ -88,7 +121,7 @@ class Board {
   }
 
   countMarkersInRow(row, marker) {
-    return row.filter(square => this.gameBoard[square].marker === marker).length;
+    return row.filter(square => this.gameBoard[square].getMarker() === marker).length;
   }
 
   boardIsFull() {
@@ -97,9 +130,9 @@ class Board {
 
   markSquare(square, order) {
     if (order === Player.PLAYER_ONE_ORDER) {
-      this.gameBoard[square].marker = Square.PLAYER_ONE_MARKER;
+      this.gameBoard[square].setMarker(Square.PLAYER_ONE_MARKER);
     } else {
-      this.gameBoard[square].marker = Square.PLAYER_TWO_MARKER;
+      this.gameBoard[square].setMarker(Square.PLAYER_TWO_MARKER);
     }
   }
 
@@ -145,8 +178,8 @@ class TTTGame {
   scoreBoardDisplay() {
     console.clear();
     console.log(`~~~~~SCORE (first to ${this.winningScore})~~~~~`);
-    console.log(`${this.player1.name}: ${this.player1.score}`);
-    console.log(`${this.player2.name}: ${this.player2.score}`);
+    console.log(`${this.player1.returnName()}: ${this.player1.returnScore()}`);
+    console.log(`${this.player2.returnName()}: ${this.player2.returnScore()}`);
     console.log(`~~~Game ${this.gameNum}~~~`);
     this.board.displayBoard();
   }
@@ -162,13 +195,13 @@ class TTTGame {
   }
 
   findCriticalSquare(row) {
-    return row === null ? null : row.find(square => this.board.gameBoard[square].marker === Square.UNUSED_SQUARE);
+    return row === null ? null : row.find(square => this.board.gameBoard[square].isUnused());
   }
 
   findCriticalRow(marker) {
-    for (let idx = 0; idx <= 7; idx++) {
+    for (let idx = 0; idx < Board.POSSIBLE_WINNING_COMBOS.length; idx++) {
       if (this.board.countMarkersInRow(Board.POSSIBLE_WINNING_COMBOS[idx], marker) === 2 &&
-      (Board.POSSIBLE_WINNING_COMBOS[idx].find(square => this.board.gameBoard[square].marker === Square.UNUSED_SQUARE) !== undefined)
+      (Board.POSSIBLE_WINNING_COMBOS[idx].find(square => this.board.gameBoard[square].isUnused()) !== undefined)
       ) {
         return Board.POSSIBLE_WINNING_COMBOS[idx];
       }
@@ -193,7 +226,7 @@ class TTTGame {
   computerMove(player) {
     console.log('Making choice...(press return to coninue)');
     readline.question();
-    return player.difficulty === 'easy' ? this.computerChooseRandom() : this.smartComputerChoose(player);
+    return player.difficulty === Player.COMPUTER_EASY ? this.computerChooseRandom() : this.smartComputerChoose(player);
   }
 
   smartComputerChoose(player) {
@@ -234,8 +267,8 @@ class TTTGame {
   }
 
   makeMove(player) {
-    console.log(`${player.name}'s turn:`);
-    return player.type === 'human' ? this.board.markSquare(this.humanChoose(), player.order) : this.board.markSquare(this.computerMove(player), player.order);
+    console.log(`${player.returnName()}'s turn:`);
+    return player.type === Player.PLAYER_HUMAN ? this.board.markSquare(this.humanChoose(), player.order) : this.board.markSquare(this.computerMove(player), player.order);
   }
 
   someoneWon() {
@@ -248,16 +281,25 @@ class TTTGame {
   determineGameWinner() {
     Board.POSSIBLE_WINNING_COMBOS.forEach(combo => {
       if (combo.every(square => this.board.gameBoard[square].marker === Square.PLAYER_ONE_MARKER)) {
-        console.log(`${this.player1.name} wins!`);
-        this.player1.score++;
+        return this.player1.returnName();
       } else if (combo.every(square => this.board.gameBoard[square].marker === Square.PLAYER_TWO_MARKER)) {
-        console.log(`${this.player2.name} wins!`);
-        this.player2.score++;
+        return this.player2.returnName();
+      } else {
+        return null;
       }
     });
-    if (!this.someoneWon()) console.log("It's a tie.");
-    this.gameNum++;
-    readline.question('Press Return to proceed:');
+  }
+
+  displayGameWinner(winner) {
+    if (winner === null) {
+      console.log("It's a tie.");
+    } else if (winner === this.player1.returnName()) {
+      console.log(`${this.player1.returnName()} wins!`);
+      this.player1.incrementScore();
+    } else {
+      console.log(`${this.player2.returnName()} wins!`);
+      this.player2.incrementScore();
+    }
   }
 
   isGameOver() {
@@ -265,14 +307,16 @@ class TTTGame {
   }
 
   isMatchOver() {
-    return (this.player1.score === this.winningScore || this.player2.score === this.winningScore || this.gameNum > this.maxGames);
+    return (this.player1.returnScore() === this.winningScore || this.player2.returnScore() === this.winningScore || this.gameNum > this.maxGames);
   }
 
   determineMatchWinner() {
-    if (this.player1.score > this.player2.score) {
-      console.log(`${this.player1.name} is the Champion!`);
-    } else if (this.player2.score > this.player1.score) {
-      console.log(`${this.player2.name} is the Champion!`);
+    let p1Score = this.player1.returnScore();
+    let p2Score = this.player2.returnScore();
+    if (p1Score > p2Score) {
+      console.log(`${this.player1.returnName()} is the Champion!`);
+    } else if (p2Score > p1Score) {
+      console.log(`${this.player2.returnName()} is the Champion!`);
     } else {
       console.log('This match has been declared a tie.');
     }
@@ -284,7 +328,7 @@ class TTTGame {
 
     while (true) {
       response = readline.question();
-      if (response !== '' && (response[0].toLowerCase() === 'y' || response[0].toLowerCase() === 'n')) break;
+      if (response.toLowerCase() === 'y' || response.toLowerCase() === 'n') break;
       console.log('Please choose a valid response (y, n).');
     }
     return response === 'y';
@@ -304,6 +348,10 @@ class TTTGame {
     return this.gameNum % 2 === 1 ? this.player2 : this.player1;
   }
 
+  incrementGameNum() {
+    this.gameNum++;
+  }
+
   playGame() {
     while (true) {
       this.scoreBoardDisplay();
@@ -321,9 +369,10 @@ class TTTGame {
     this.maxGames = this.winningScore * 5;
     while (true) {
       this.playGame();
-      this.determineGameWinner();
-      this.board.resetBoard();
+      this.displayGameWinner(this.determineGameWinner());
+      this.incrementGameNum();
       if (this.isMatchOver()) break;
+      this.board.resetBoard();
     }
     this.determineMatchWinner();
   }
